@@ -1,0 +1,133 @@
+<div class="page-header no-print">
+  <div>
+    <h1 class="page-title">Reports</h1>
+    <p class="page-subtitle">Sales analytics and reporting</p>
+  </div>
+  <button class="btn btn-outline" (click)="printReport()" *ngIf="report">🖨️ Print</button>
+</div>
+
+<!-- Report selector -->
+<div class="card report-controls no-print">
+  <div class="report-tabs">
+    <button class="tab-btn" [class.active]="reportType === 'today'" (click)="reportType='today'; loadReport()">Today</button>
+    <button class="tab-btn" [class.active]="reportType === 'monthly'" (click)="reportType='monthly'; loadReport()">Monthly</button>
+    <button class="tab-btn" [class.active]="reportType === 'custom'" (click)="reportType='custom'">Custom Range</button>
+  </div>
+
+  <!-- Monthly selector -->
+  <div *ngIf="reportType === 'monthly'" class="date-controls">
+    <select class="form-select" [(ngModel)]="selectedMonth" (change)="loadReport()">
+      <option *ngFor="let m of months; let i = index" [value]="i+1">{{ m }}</option>
+    </select>
+    <select class="form-select" [(ngModel)]="selectedYear" (change)="loadReport()">
+      <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+    </select>
+  </div>
+
+  <!-- Custom date range -->
+  <div *ngIf="reportType === 'custom'" class="date-controls">
+    <div class="date-field">
+      <label>From</label>
+      <input class="form-input" type="date" [(ngModel)]="fromDate" />
+    </div>
+    <div class="date-field">
+      <label>To</label>
+      <input class="form-input" type="date" [(ngModel)]="toDate" />
+    </div>
+    <button class="btn btn-primary" [disabled]="!fromDate || !toDate" (click)="loadReport()">Generate</button>
+  </div>
+</div>
+
+<!-- Loading / Error -->
+<div *ngIf="loading" class="state-box"><div class="spinner"></div><p>Loading report...</p></div>
+<div *ngIf="error" class="alert alert-danger">⚠️ {{ error }}</div>
+
+<!-- Report content -->
+<div *ngIf="!loading && report">
+
+  <!-- Summary cards -->
+  <div class="report-header-print">
+    <h2>📊 {{ reportTitle }}</h2>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <span class="summary-icon">💰</span>
+      <span class="summary-label">Total Revenue</span>
+      <span class="summary-value accent">{{ formatCurrency(report.totalRevenue) }}</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon">🧾</span>
+      <span class="summary-label">Total Orders</span>
+      <span class="summary-value">{{ report.totalOrders }}</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon">💊</span>
+      <span class="summary-label">Pieces Sold</span>
+      <span class="summary-value">{{ report.totalPiecesSold | number }}</span>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon">📦</span>
+      <span class="summary-label">Avg. Order Value</span>
+      <span class="summary-value">{{ formatCurrency(report.totalOrders > 0 ? report.totalRevenue / report.totalOrders : 0) }}</span>
+    </div>
+  </div>
+
+  <!-- Top medicines chart -->
+  <div class="card report-section" *ngIf="report.topMedicines.length > 0">
+    <h3 class="section-title">🏆 Top Selling Medicines</h3>
+    <div class="top-med-list">
+      <div *ngFor="let m of report.topMedicines; let i = index" class="top-med-row">
+        <span class="rank">{{ i + 1 }}</span>
+        <span class="top-med-name">{{ m.medicineName }}</span>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width]="barWidth(m.totalRevenue)"></div>
+        </div>
+        <span class="top-med-pieces">{{ m.totalPiecesSold }} pcs</span>
+        <span class="top-med-revenue">{{ formatCurrency(m.totalRevenue) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders table -->
+  <div class="card report-section">
+    <h3 class="section-title">🧾 Order History</h3>
+    <div class="table-wrap">
+      <p-table
+        [value]="report.orders"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10,20,50]"
+        [tableStyle]="{ 'min-width': '60rem' }"
+        styleClass="p-datatable-sm"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Invoice</th>
+            <th>Date & Time</th>
+            <th>Items</th>
+            <th class="text-right">Subtotal</th>
+            <th class="text-right">Discount</th>
+            <th class="text-right">Grand Total</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-order>
+          <tr>
+            <td><span class="invoice-tag">{{ order.invoiceNumber }}</span></td>
+            <td>{{ formatDateTime(order.orderDate) }}</td>
+            <td>{{ order.items.length }}</td>
+            <td class="text-right">{{ formatCurrency(order.subTotal) }}</td>
+            <td class="text-right text-danger">
+              {{ order.discount > 0 ? '− ' + formatCurrency(order.discount) : '—' }}
+            </td>
+            <td class="text-right fw-700 accent-text">{{ formatCurrency(order.grandTotal) }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+      <p *ngIf="report.orders.length === 0" class="no-data center">No orders in this period</p>
+    </div>
+  </div>
+
+</div>

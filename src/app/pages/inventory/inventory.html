@@ -1,0 +1,150 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Inventory</h1>
+    <p class="page-subtitle">Browse medicines and add to cart</p>
+  </div>
+  <button *ngIf="cart.length > 0" class="btn btn-primary cart-toggle-btn" (click)="isCartOpen = !isCartOpen">
+    🛒 Cart ({{ cartItemCount }})
+    <span class="cart-badge">{{ formatCurrency(cartTotal) }}</span>
+  </button>
+</div>
+
+<!-- Search + Filter -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input"
+           type="text"
+           placeholder="Search by name, generic name, barcode..."
+           [(ngModel)]="searchTerm"
+           (input)="filterMedicines()" />
+  </div>
+  <select class="form-select" [(ngModel)]="selectedCategory" (change)="filterMedicines()">
+    <option value="">All Categories</option>
+    <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+  </select>
+</div>
+
+<div class="inventory-layout" [class.cart-open]="isCartOpen">
+
+  <!-- Medicine Table -->
+  <div class="table-wrap card">
+    <div *ngIf="loading" class="state-box">
+      <div class="spinner"></div>
+      <p>Loading medicines...</p>
+    </div>
+
+    <p-table
+      *ngIf="!loading"
+      [value]="medicines"
+      [paginator]="true"
+      [rows]="10"
+      [rowsPerPageOptions]="[10,20,50]"
+      [tableStyle]="{ 'min-width': '60rem' }"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Medicine</th>
+          <th>Category</th>
+          <th>Unit</th>
+          <th>Stock</th>
+          <th class="text-right">Price</th>
+          <th>Expiry</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-m>
+        <tr
+          [class.row-expired]="m.isExpired"
+          [class.row-low]="m.isLowStock && !m.isExpired"
+        >
+          <td>
+            <div class="med-name">{{ m.name }}</div>
+            <div class="med-generic" *ngIf="m.genericName">{{ m.genericName }}</div>
+          </td>
+          <td>
+            <span class="category-tag">{{ m.category || '—' }}</span>
+          </td>
+          <td class="unit-cell">
+            <span>{{ m.unitType }}</span>
+            <span class="unit-sub" *ngIf="m.piecesPerUnit > 1">({{ m.piecesPerUnit }}pcs)</span>
+          </td>
+          <td>
+            <div class="stock-info">
+              <span class="stock-qty">{{ m.quantityInUnits }} {{ m.unitType }}s</span>
+              <span class="stock-pieces">{{ m.totalPiecesInStock }} pcs</span>
+            </div>
+          </td>
+          <td class="text-right">
+            <span class="price">Rs {{ m.sellingPrice | number:'1.0-0' }}</span>
+          </td>
+          <td>
+            <span [class.text-danger]="m.isExpired || m.isExpiringSoon">
+              {{ m.expireDate | date:'dd MMM yyyy' }}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge" [ngClass]="getStockClass(m)">
+              {{ getStockLabel(m) }}
+            </span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-primary"
+              [disabled]="m.totalPiecesInStock === 0 || m.isExpired"
+              (click)="addToCart(m)"
+            >
+              + Add
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p *ngIf="!loading && medicines.length === 0" class="no-data center">
+      No medicines found
+    </p>
+
+  </div>
+
+  <!-- Cart Panel -->
+  <aside class="cart-panel card" *ngIf="isCartOpen">
+    <div class="cart-header">
+      <h3>🛒 Cart</h3>
+      <button class="icon-btn" (click)="clearCart()" title="Clear cart">🗑️</button>
+    </div>
+
+    <div class="cart-items">
+      <div *ngFor="let item of cart" class="cart-item">
+        <div class="cart-item-top">
+          <span class="cart-item-name">{{ item.medicineName }}</span>
+          <span class="cart-item-price">{{ formatCurrency(item.lineTotal) }}</span>
+        </div>
+        <div class="cart-item-bottom">
+          <div class="qty-controls">
+            <button class="qty-btn" (click)="decrement(item.medicineId)">−</button>
+            <span class="qty-value">{{ item.quantityInPieces }}</span>
+            <button class="qty-btn" (click)="increment(item.medicineId)">+</button>
+          </div>
+          <span class="unit-price">Rs {{ item.sellingPrice }}/pc</span>
+          <button class="remove-btn" (click)="removeItem(item.medicineId)">✕</button>
+        </div>
+        <div class="avail-note">Available: {{ item.availablePieces }} pcs</div>
+      </div>
+    </div>
+
+    <div class="cart-footer">
+      <div class="cart-total-row">
+        <span>Total</span>
+        <span class="cart-total">{{ formatCurrency(cartTotal) }}</span>
+      </div>
+      <button class="btn btn-primary btn-full" (click)="goToSales()">
+        Proceed to Checkout →
+      </button>
+    </div>
+  </aside>
+
+</div>

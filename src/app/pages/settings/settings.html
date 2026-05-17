@@ -1,0 +1,177 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <p class="page-subtitle">Manage medicines, themes and preferences</p>
+  </div>
+</div>
+
+<!-- Theme Card -->
+<div class="card settings-section">
+  <h3 class="section-title">🎨 Appearance</h3>
+  <p class="section-desc">Choose your preferred color theme for the application.</p>
+  <div class="theme-options">
+    <button class="theme-option" [class.theme-active]="currentTheme === 'blue'" (click)="setTheme('blue')">
+      <div class="theme-preview theme-preview-blue"></div>
+      <span>☀️ Light Blue</span>
+    </button>
+    <button class="theme-option" [class.theme-active]="currentTheme === 'dark'" (click)="setTheme('dark')">
+      <div class="theme-preview theme-preview-dark"></div>
+      <span>🌙 Dark</span>
+    </button>
+  </div>
+</div>
+
+<!-- Medicine Management -->
+<div class="card settings-section">
+  <div class="section-row">
+    <div>
+      <h3 class="section-title">💊 Medicine Management</h3>
+      <p class="section-desc">Search, edit and delete medicines from your inventory.</p>
+    </div>
+    <a routerLink="/add-medicine" class="btn btn-primary btn-sm">➕ Add New</a>
+  </div>
+
+  <!-- Search bar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text"
+             placeholder="Search medicines..."
+             [(ngModel)]="searchTerm"
+             (input)="filter()" />
+    </div>
+    <select class="form-select" [(ngModel)]="selectedCategory" (change)="filter()">
+      <option value="">All Categories</option>
+      <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div *ngIf="loading" class="state-box"><div class="spinner"></div><p>Loading...</p></div>
+    <table *ngIf="!loading" class="table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Category</th>
+          <th>Unit</th>
+          <th>Stock</th>
+          <th class="text-right">Price</th>
+          <th>Expiry</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of medicines" [class.row-expired]="m.isExpired" [class.row-low]="m.isLowStock && !m.isExpired">
+          <td>
+            <div class="med-name-cell">{{ m.name }}</div>
+            <div class="med-generic-cell" *ngIf="m.genericName">{{ m.genericName }}</div>
+          </td>
+          <td><span class="category-tag">{{ m.category || '—' }}</span></td>
+          <td>{{ m.unitType }}</td>
+          <td>
+            <span [class.text-danger]="m.isLowStock">{{ m.quantityInUnits }} {{ m.unitType }}s</span>
+            <br /><span class="text-muted-sm">{{ m.totalPiecesInStock }} pcs</span>
+          </td>
+          <td class="text-right fw-600">Rs {{ m.sellingPrice | number:'1.0-0' }}</td>
+          <td [class.text-danger]="m.isExpired" [class.text-warning]="m.isExpiringSoon && !m.isExpired">
+            {{ formatDate(m.expireDate) }}
+          </td>
+          <td>
+            <span class="status-badge"
+                  [class.badge-ok]="!m.isLowStock && !m.isExpired"
+                  [class.badge-warn]="m.isLowStock && !m.isExpired"
+                  [class.badge-danger]="m.isExpired">
+              {{ m.isExpired ? 'Expired' : m.isLowStock ? 'Low Stock' : 'OK' }}
+            </span>
+          </td>
+          <td>
+            <div class="action-btns">
+              <button class="btn btn-sm btn-outline" (click)="openEdit(m)">✏️ Edit</button>
+              <button class="btn btn-sm btn-danger-outline" (click)="deleteMedicine(m)">🗑️ Delete</button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="medicines.length === 0 && !loading">
+          <td colspan="8" class="no-data center">No medicines found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" *ngIf="isEditOpen" (click)="closeEdit()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>✏️ Edit Medicine</h3>
+      <button class="modal-close" (click)="closeEdit()">✕</button>
+    </div>
+
+    <div class="modal-body" *ngIf="editMedicine">
+      <div class="modal-grid">
+        <div class="form-group">
+          <label class="form-label">Name <span class="required">*</span></label>
+          <input class="form-input" [(ngModel)]="editMedicine.name" placeholder="Medicine name" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Generic Name</label>
+          <input class="form-input" [(ngModel)]="editMedicine.genericName" placeholder="Generic / chemical name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" [(ngModel)]="editMedicine.category">
+            <option value="">— Select —</option>
+            <option *ngFor="let c of categoryOptions" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Manufacturer</label>
+          <input class="form-input" [(ngModel)]="editMedicine.manufacturer" placeholder="Manufacturer" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purchase Price (Rs)</label>
+          <input class="form-input" type="number" [(ngModel)]="editMedicine.purchasePrice" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Selling Price (Rs)</label>
+          <input class="form-input" type="number" [(ngModel)]="editMedicine.sellingPrice" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit Type</label>
+          <select class="form-select" [(ngModel)]="editMedicine.unitType">
+            <option *ngFor="let u of unitTypes" [value]="u.id">{{ u.label }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pieces Per Unit</label>
+          <input class="form-input" type="number" [(ngModel)]="editMedicine.piecesPerUnit" min="1" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity In Stock (units)</label>
+          <input class="form-input" type="number" [(ngModel)]="editMedicine.quantityInUnits" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Min. Stock Level</label>
+          <input class="form-input" type="number" [(ngModel)]="editMedicine.minStockLevel" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expiry Date</label>
+          <input class="form-input" type="date" [(ngModel)]="editMedicine.expireDate" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Barcode</label>
+          <input class="form-input" [(ngModel)]="editMedicine.barcode" placeholder="Barcode" />
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" [disabled]="saving" (click)="saveEdit()">
+        {{ saving ? 'Saving...' : '✔ Save Changes' }}
+      </button>
+    </div>
+  </div>
+</div>

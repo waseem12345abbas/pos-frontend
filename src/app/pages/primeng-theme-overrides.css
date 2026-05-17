@@ -1,0 +1,59 @@
+:root {
+  --bb-p-table-border: var(--border-color, rgba(226, 232, 240, 1));
+  --bb-p-table-head-bg: var(--bg-secondary, #f1f5f9);
+  --bb-p-table-head-text: var(--text-muted, #64748b);
+  --bb-p-table-body-text: var(--text-secondary, #475569);
+  --bb-p-table-row-hover: var(--hover-bg, rgba(241, 245, 249, 1));
+}
+
+/* Force PrimeNG paginator + table to follow app CSS variables.
+   Works for both themes because your app toggles .theme-dark/.theme-blue via variables. */
+:host ::ng-deep .p-datatable {
+  color: var(--bb-p-table-body-text);
+}
+
+
+:host ::ng-deep .p-datatable-thead > tr > th {
+  background: var(--bb-p-table-head-bg);
+  color: var(--bb-p-table-head-text);
+  border-color: var(--bb-p-table-border);
+}
+
+:host ::ng-deep .p-datatable-tbody > tr > td {
+  border-color: var(--bb-p-table-border);
+}
+
+:host ::ng-deep .p-datatable-tbody > tr:hover > td {
+  background: var(--bb-p-table-row-hover);
+}
+
+/* Paginator */
+:host ::ng-deep .p-paginator {
+  background: transparent;
+  border: 0;
+}
+
+:host ::ng-deep .p-paginator .p-paginator-current,
+:host ::ng-deep .p-paginator .p-paginator-element {
+  color: var(--text-secondary, #475569);
+}
+
+:host ::ng-deep .p-paginator .p-paginator-page {
+  border: 1px solid var(--bb-p-table-border);
+  background: transparent;
+  color: var(--text-secondary, #475569);
+}
+
+:host ::ng-deep .p-paginator .p-paginator-page.p-highlight {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}
+
+:host ::ng-deep .p-paginator .p-paginator-prev,
+:host ::ng-deep .p-paginator .p-paginator-next {
+  border: 1px solid var(--bb-p-table-border);
+  background: transparent;
+  color: var(--text-secondary, #475569);
+}
+

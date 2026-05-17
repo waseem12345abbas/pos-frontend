@@ -1,0 +1,198 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Add Medicine</h1>
+    <p class="page-subtitle">Add a new medicine to the pharmacy inventory</p>
+  </div>
+</div>
+
+<form #medicineForm="ngForm" (ngSubmit)="submitForm(medicineForm)" class="form-layout" novalidate>
+
+  <!-- Left column -->
+  <div class="form-main">
+
+    <!-- Basic Info -->
+    <div class="card form-section">
+      <h3 class="section-title">📋 Basic Information</h3>
+
+      <div class="form-grid">
+        <div class="form-group required">
+          <label>Medicine Name</label>
+          <input type="text"
+                 name="name"
+                 [(ngModel)]="medicine.name"
+                 #nameCtrl="ngModel"
+                 required
+                 maxlength="200"
+                 placeholder="e.g. Panadol"
+                 class="form-input"
+                 [class.invalid]="nameCtrl.invalid && nameCtrl.touched" />
+          <span class="error-msg" *ngIf="nameCtrl.invalid && nameCtrl.touched">Name is required</span>
+        </div>
+
+        <div class="form-group">
+          <label>Generic / Chemical Name</label>
+          <input type="text" name="genericName" [(ngModel)]="medicine.genericName"
+                 placeholder="e.g. Paracetamol" class="form-input" />
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category" [(ngModel)]="medicine.category" class="form-select">
+            <option value="">— Select Category —</option>
+            <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Manufacturer</label>
+          <input type="text" name="manufacturer" [(ngModel)]="medicine.manufacturer"
+                 placeholder="e.g. GSK" class="form-input" />
+        </div>
+
+        <div class="form-group full-width">
+          <label>Description</label>
+          <textarea name="description" [(ngModel)]="medicine.description"
+                    placeholder="Optional notes about this medicine"
+                    class="form-input form-textarea" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Barcode</label>
+          <input type="text" name="barcode" [(ngModel)]="medicine.barcode"
+                 placeholder="Scan or type barcode" class="form-input" />
+        </div>
+
+        <div class="form-group required">
+          <label>Expiry Date</label>
+          <input type="date" name="expireDate"
+                 [(ngModel)]="medicine.expireDate"
+                 #expireCtrl="ngModel"
+                 required
+                 class="form-input"
+                 [class.invalid]="expireCtrl.invalid && expireCtrl.touched" />
+          <span class="error-msg" *ngIf="expireCtrl.invalid && expireCtrl.touched">Expiry date is required</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="card form-section">
+      <h3 class="section-title">💰 Pricing</h3>
+      <div class="form-grid">
+        <div class="form-group required">
+          <label>Purchase Price (Rs)</label>
+          <input type="number" name="purchasePrice"
+                 [(ngModel)]="medicine.purchasePrice"
+                 #ppCtrl="ngModel"
+                 required min="0" step="0.01"
+                 placeholder="0.00"
+                 class="form-input"
+                 [class.invalid]="ppCtrl.invalid && ppCtrl.touched" />
+          <span class="error-msg" *ngIf="ppCtrl.invalid && ppCtrl.touched">Purchase price is required</span>
+        </div>
+
+        <div class="form-group required">
+          <label>Selling Price (Rs)</label>
+          <input type="number" name="sellingPrice"
+                 [(ngModel)]="medicine.sellingPrice"
+                 #spCtrl="ngModel"
+                 required min="0.01" step="0.01"
+                 placeholder="0.00"
+                 class="form-input"
+                 [class.invalid]="spCtrl.invalid && spCtrl.touched" />
+          <span class="error-msg" *ngIf="spCtrl.invalid && spCtrl.touched">Selling price is required</span>
+        </div>
+      </div>
+
+      <!-- Margin preview -->
+      <div class="margin-preview" *ngIf="medicine.purchasePrice > 0 && medicine.sellingPrice > 0">
+        <span>Profit Margin:</span>
+        <span [class.margin-ok]="profitMargin >= 0" [class.margin-warn]="profitMargin < 0">
+          {{ profitMargin | number:'1.1-1' }}%
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div class="form-side">
+
+    <!-- Unit Type -->
+    <div class="card form-section">
+      <h3 class="section-title">📦 Unit Management</h3>
+      <p class="section-hint">Define how this medicine's stock is measured and tracked.</p>
+
+      <div class="unit-type-grid">
+        <label *ngFor="let u of unitTypes"
+               class="unit-option"
+               [class.selected]="medicine.unitType === u.id">
+          <input type="radio"
+                 name="unitType"
+                 [value]="u.id"
+                 [(ngModel)]="medicine.unitType"
+                 (change)="onUnitTypeChange()"
+                 hidden />
+          <span class="unit-label">{{ u.label }}</span>
+          <span class="unit-desc">{{ u.description }}</span>
+        </label>
+      </div>
+
+      <div class="form-grid" style="margin-top:16px">
+        <div class="form-group" *ngIf="showPiecesPerUnit">
+          <label>{{ piecesPerUnitLabel }}</label>
+          <input type="number" name="piecesPerUnit"
+                 [(ngModel)]="medicine.piecesPerUnit"
+                 min="1" class="form-input"
+                 placeholder="e.g. 10" />
+          <span class="field-hint">How many individual pieces fit in one {{ selectedUnitLabel }}</span>
+        </div>
+
+        <div class="form-group required">
+          <label>Quantity in Stock ({{ selectedUnitLabel }}s)</label>
+          <input type="number" name="quantityInUnits"
+                 [(ngModel)]="medicine.quantityInUnits"
+                 #qtyCtrl="ngModel"
+                 required min="0"
+                 placeholder="0"
+                 class="form-input"
+                 [class.invalid]="qtyCtrl.invalid && qtyCtrl.touched" />
+          <span class="error-msg" *ngIf="qtyCtrl.invalid && qtyCtrl.touched">Quantity is required</span>
+        </div>
+
+        <div class="form-group">
+          <label>Min. Stock Alert Level ({{ selectedUnitLabel }}s)</label>
+          <input type="number" name="minStockLevel"
+                 [(ngModel)]="medicine.minStockLevel"
+                 min="0" placeholder="10" class="form-input" />
+          <span class="field-hint">Alert when stock falls below this</span>
+        </div>
+      </div>
+
+      <!-- Stock preview -->
+      <div class="stock-preview" *ngIf="medicine.quantityInUnits > 0">
+        <div class="preview-row">
+          <span>Total pieces in stock:</span>
+          <strong>{{ totalPiecesPreview | number }} pieces</strong>
+        </div>
+        <div class="preview-row" *ngIf="showPiecesPerUnit">
+          <span>{{ medicine.quantityInUnits }} {{ selectedUnitLabel }}(s) × {{ medicine.piecesPerUnit }} pieces</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="card form-section">
+      <button type="submit" class="btn btn-primary btn-full" [disabled]="submitting">
+        <span *ngIf="!submitting">➕ Add Medicine</span>
+        <span *ngIf="submitting" class="loading-dots">Saving...</span>
+      </button>
+      <button type="button" class="btn btn-outline btn-full" style="margin-top:8px"
+              (click)="medicine = getEmptyDto(); medicineForm.resetForm()">
+        ↺ Reset Form
+      </button>
+    </div>
+
+  </div>
+
+</form>

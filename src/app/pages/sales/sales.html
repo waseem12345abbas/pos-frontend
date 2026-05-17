@@ -1,0 +1,180 @@
+<!-- ─── Invoice view (after order confirmed) ─── -->
+<div *ngIf="showInvoice && completedOrder" class="invoice-view">
+  <div class="invoice-actions no-print">
+    <button class="btn btn-primary" (click)="printInvoice()">🖨️ Print Invoice</button>
+    <button class="btn btn-outline" (click)="newOrder()">➕ New Sale</button>
+  </div>
+
+  <div class="invoice-paper" id="invoice">
+    <div class="invoice-header">
+      <div class="invoice-logo">💊 Pharma POS</div>
+      <div class="invoice-meta">
+        <strong>Invoice #{{ completedOrder.invoiceNumber }}</strong>
+        <span>{{ formatDate(completedOrder.orderDate) }}</span>
+      </div>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Medicine</th>
+          <th class="text-right">Qty (pcs)</th>
+          <th class="text-right">Unit Price</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of completedOrder.items; let i = index">
+          <td>{{ i + 1 }}</td>
+          <td>{{ item.medicineName }}</td>
+          <td class="text-right">{{ item.quantitySoldInPieces }}</td>
+          <td class="text-right">{{ formatCurrency(item.unitPricePerPiece) }}</td>
+          <td class="text-right fw-600">{{ formatCurrency(item.lineTotal) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="invoice-totals">
+      <div class="total-row"><span>Subtotal</span><span>{{ formatCurrency(completedOrder.subTotal) }}</span></div>
+      <div class="total-row" *ngIf="completedOrder.discount > 0"><span>Discount</span><span class="text-danger">− {{ formatCurrency(completedOrder.discount) }}</span></div>
+      <div class="total-row grand"><span>Grand Total</span><span>{{ formatCurrency(completedOrder.grandTotal) }}</span></div>
+      <div class="total-row"><span>Amount Paid</span><span>{{ formatCurrency(completedOrder.amountPaid) }}</span></div>
+      <div class="total-row success-row"><span>Change</span><span>{{ formatCurrency(completedOrder.change) }}</span></div>
+    </div>
+
+    <div class="invoice-footer">
+      <p>Thank you for your purchase!</p>
+      <p class="invoice-note" *ngIf="completedOrder.notes">Note: {{ completedOrder.notes }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── POS View ─── -->
+<div *ngIf="!showInvoice" class="pos-layout">
+
+  <!-- LEFT: Medicine search panel -->
+  <div class="medicine-panel card">
+    <div class="panel-header">
+      <h3>💊 Select Medicines</h3>
+    </div>
+    <div class="medicine-search">
+      <input class="form-input"
+             type="text"
+             placeholder="🔍 Search by name, generic or barcode..."
+             [(ngModel)]="searchTerm"
+             (input)="filterMedicines()" />
+    </div>
+    <div class="medicine-list">
+      <div *ngFor="let m of filteredMedicines"
+           class="medicine-row"
+           [class.disabled-row]="m.totalPiecesInStock === 0 || m.isExpired"
+           (click)="addToCart(m)">
+        <div class="med-info">
+          <span class="med-name">{{ m.name }}</span>
+          <span class="med-generic" *ngIf="m.genericName">{{ m.genericName }}</span>
+        </div>
+        <div class="med-right">
+          <span class="med-price">{{ formatCurrency(m.sellingPrice) }}</span>
+          <span class="med-stock" [class.stock-low]="m.isLowStock" [class.stock-out]="m.totalPiecesInStock === 0 || m.isExpired">
+            {{ m.isExpired ? 'Expired' : m.totalPiecesInStock + ' pcs' }}
+          </span>
+        </div>
+      </div>
+      <p *ngIf="filteredMedicines.length === 0" class="no-data center">No medicines found</p>
+    </div>
+  </div>
+
+  <!-- RIGHT: Cart + Checkout -->
+  <div class="checkout-panel">
+
+    <!-- Cart -->
+    <div class="card cart-section">
+      <div class="cart-top">
+        <h3>🛒 Cart <span class="item-count" *ngIf="cart.length > 0">({{ cart.length }})</span></h3>
+        <button *ngIf="cart.length > 0" class="btn btn-sm btn-danger-outline" (click)="clearCart()">Clear</button>
+      </div>
+
+      <div class="cart-body">
+        <div *ngIf="cart.length === 0" class="empty-cart">
+          <span class="empty-icon">🛒</span>
+          <p>Cart is empty</p>
+          <p class="text-muted">Click a medicine to add it</p>
+        </div>
+
+        <div *ngFor="let item of cart" class="cart-item">
+          <div class="cart-item-row">
+            <span class="ci-name">{{ item.medicineName }}</span>
+            <span class="ci-total">{{ formatCurrency(item.lineTotal) }}</span>
+          </div>
+          <div class="cart-item-row ci-controls">
+            <div class="qty-group">
+              <button class="qty-btn" (click)="decrement(item.medicineId)">−</button>
+              <span class="qty-num">{{ item.quantityInPieces }}</span>
+              <button class="qty-btn" (click)="increment(item.medicineId)">+</button>
+              <span class="ci-unit-price">× {{ formatCurrency(item.sellingPrice) }}</span>
+            </div>
+            <button class="remove-btn" (click)="removeItem(item.medicineId)">✕</button>
+          </div>
+          <div class="avail-hint">Max: {{ item.availablePieces }} pcs available</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Billing -->
+    <div class="card billing-section">
+      <h3 class="billing-title">💳 Billing</h3>
+
+      <div class="billing-rows">
+        <div class="bill-row">
+          <span>Subtotal</span>
+          <span>{{ formatCurrency(subTotal) }}</span>
+        </div>
+
+        <div class="bill-row">
+          <span>Discount (Rs)</span>
+          <input class="bill-input"
+                 type="number"
+                 [(ngModel)]="discount"
+                 min="0"
+                 [max]="subTotal"
+                 placeholder="0" />
+        </div>
+
+        <div class="bill-row grand-row">
+          <span>Grand Total</span>
+          <span class="grand-amount">{{ formatCurrency(grandTotal) }}</span>
+        </div>
+
+        <div class="bill-row">
+          <span>Amount Paid (Rs)</span>
+          <input class="bill-input"
+                 type="number"
+                 [(ngModel)]="amountPaid"
+                 min="0"
+                 placeholder="0"
+                 [class.payment-ok]="isPaymentValid"
+                 [class.payment-warn]="amountPaid > 0 && !isPaymentValid" />
+        </div>
+
+        <div class="bill-row change-row" *ngIf="amountPaid > 0">
+          <span>Change</span>
+          <span class="change-amount" [class.text-danger]="change < 0">{{ formatCurrency(change) }}</span>
+        </div>
+
+        <div class="bill-row">
+          <span>Notes</span>
+          <input class="bill-input" type="text" [(ngModel)]="notes" placeholder="Optional note..." />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full confirm-btn"
+              [disabled]="cart.length === 0 || !isPaymentValid || submitting"
+              (click)="confirmOrder()">
+        <span *ngIf="!submitting">✔ Confirm Order</span>
+        <span *ngIf="submitting">Processing...</span>
+      </button>
+    </div>
+
+  </div>
+</div>

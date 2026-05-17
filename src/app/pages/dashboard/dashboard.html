@@ -1,0 +1,171 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Welcome back — here's your pharmacy overview</p>
+  </div>
+  <button class="btn btn-outline" (click)="loadStats()">↻ Refresh</button>
+</div>
+
+<!-- Loading / Error -->
+<div *ngIf="loading" class="state-box">
+  <div class="spinner"></div>
+  <p>Loading dashboard...</p>
+</div>
+
+<div *ngIf="error" class="alert alert-danger">
+  ⚠️ {{ error }}
+</div>
+
+<!-- Stats grid -->
+<div *ngIf="!loading && stats" class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#eff6ff">💊</div>
+    <div class="stat-info">
+      <span class="stat-label">Total Medicines</span>
+      <span class="stat-value">{{ stats.totalMedicines }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#f0fdf4">📦</div>
+    <div class="stat-info">
+      <span class="stat-label">Total Stock (pieces)</span>
+      <span class="stat-value">{{ stats.totalStockPieces | number }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card" [class.stat-warn]="stats.lowStockCount > 0">
+    <div class="stat-icon" style="background:#fffbeb">⚠️</div>
+    <div class="stat-info">
+      <span class="stat-label">Low Stock</span>
+      <span class="stat-value warning-text">{{ stats.lowStockCount }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card" [class.stat-danger]="stats.expiredCount > 0">
+    <div class="stat-icon" style="background:#fef2f2">🗓️</div>
+    <div class="stat-info">
+      <span class="stat-label">Expired</span>
+      <span class="stat-value danger-text">{{ stats.expiredCount }}</span>
+    </div>
+  </div>
+
+  <div class="stat-card stat-highlight">
+    <div class="stat-icon" style="background:#eff6ff">💰</div>
+    <div class="stat-info">
+      <span class="stat-label">Today's Sales</span>
+      <span class="stat-value accent-text">{{ formatCurrency(stats.todaySales) }}</span>
+      <span class="stat-sub">{{ stats.todayOrderCount }} orders</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#f5f3ff">📊</div>
+    <div class="stat-info">
+      <span class="stat-label">Monthly Sales</span>
+      <span class="stat-value accent-text">{{ formatCurrency(stats.monthlySales) }}</span>
+      <span class="stat-sub">{{ stats.monthlyOrderCount }} orders</span>
+    </div>
+  </div>
+</div>
+
+<!-- Charts + Alerts row -->
+<div *ngIf="!loading && stats" class="dashboard-row">
+
+  <!-- Bar chart -->
+  <div class="card chart-card">
+    <div class="card-header">
+      <h3 class="card-title">📈 Monthly Sales (Last 6 Months)</h3>
+    </div>
+    <div class="bar-chart">
+      <div *ngFor="let month of stats.monthlySalesChart" class="bar-col">
+        <span class="bar-value">{{ formatCurrency(month.totalSales) }}</span>
+        <div class="bar-wrap">
+          <div class="bar" [style.height]="getBarHeight(month.totalSales)"></div>
+        </div>
+        <span class="bar-label">{{ month.monthName }}</span>
+      </div>
+      <p *ngIf="!stats.monthlySalesChart.length" class="no-data">No sales data yet</p>
+    </div>
+  </div>
+
+  <!-- Alerts panel -->
+  <div class="alerts-panel">
+    <!-- Low Stock -->
+    <div class="card alerts-card">
+      <div class="card-header">
+        <h3 class="card-title">⚠️ Low Stock Alerts</h3>
+        <span class="badge badge-warn">{{ stats.lowStockAlerts.length }}</span>
+      </div>
+      <div class="alerts-list">
+        <div *ngFor="let alert of stats.lowStockAlerts" class="alert-item">
+          <span class="alert-name">{{ alert.name }}</span>
+          <span class="alert-detail warn">{{ alert.quantityInUnits }} / {{ alert.minStockLevel }} {{ alert.unitType }}s</span>
+        </div>
+        <p *ngIf="!stats.lowStockAlerts.length" class="no-data">✅ All stock levels healthy</p>
+      </div>
+    </div>
+
+    <!-- Expiry -->
+    <div class="card alerts-card">
+      <div class="card-header">
+        <h3 class="card-title">🗓️ Expiry Alerts</h3>
+        <span class="badge badge-danger">{{ stats.expiryAlerts.length }}</span>
+      </div>
+      <div class="alerts-list">
+        <div *ngFor="let alert of stats.expiryAlerts" class="alert-item">
+          <span class="alert-name">{{ alert.name }}</span>
+          <span class="alert-detail" [class.danger]="alert.isExpired" [class.warn]="!alert.isExpired">
+            {{ alert.isExpired ? 'EXPIRED' : daysUntilExpiry(alert.expireDate) + 'd left' }}
+          </span>
+        </div>
+        <p *ngIf="!stats.expiryAlerts.length" class="no-data">✅ No expiry issues</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Sales -->
+<div *ngIf="!loading && stats" class="card recent-card">
+  <div class="card-header">
+    <h3 class="card-title">🕐 Recent Sales</h3>
+    <a routerLink="/reports" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div class="table-wrap">
+    <p-table
+      [value]="stats.recentSales"
+      [paginator]="true"
+      [rows]="5"
+      [rowsPerPageOptions]="[5,10,20]"
+      [tableStyle]="{ 'min-width': '50rem' }"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Invoice</th>
+          <th>Date</th>
+          <th>Items</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-sale>
+        <tr>
+          <td><span class="invoice-badge">{{ sale.invoiceNumber }}</span></td>
+          <td>{{ formatDate(sale.orderDate) }}</td>
+          <td>
+            {{ sale.itemCount }} item{{ sale.itemCount !== 1 ? 's' : '' }}
+          </td>
+          <td class="text-right accent-text fw-600">
+            {{ formatCurrency(sale.grandTotal) }}
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p *ngIf="!stats.recentSales.length" class="no-data center">
+      No sales recorded yet
+    </p>
+  </div>
+</div>
+

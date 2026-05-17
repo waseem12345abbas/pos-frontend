@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="pos-pharmacy.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>
